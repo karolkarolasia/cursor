@@ -1,0 +1,38 @@
+name: CI – run all tools
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-tools:
+    name: Smoke-test all registered tools
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: List registered tools
+        run: python run.py list
+
+      - name: hello_world
+        run: python run.py hello_world '{"name":"CI"}'
+
+      - name: system_info
+        run: python run.py system_info
+
+      - name: http_probe – example.com
+        run: python run.py http_probe '{"url":"https://example.com","method":"HEAD"}'
+
+      - name: file_utils – list workspace
+        run: python run.py file_utils '{"action":"list","path":"."}'
