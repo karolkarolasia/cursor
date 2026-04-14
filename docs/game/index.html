@@ -6,113 +6,95 @@
 <title>fly</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+  body { background: #87ceeb; overflow: hidden; font-family: 'Courier New', monospace; }
   canvas { display: block; }
 
   #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     pointer-events: none;
-    color: rgba(255,255,255,0.55);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    color: rgba(0,0,0,0.55);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
   }
 
   #speed-bar-wrap {
-    position: absolute;
-    bottom: 36px; left: 50%;
+    position: absolute; bottom: 36px; left: 50%;
     transform: translateX(-50%);
     display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
   #speed-bar-bg {
     width: 160px; height: 3px;
-    background: rgba(255,255,255,0.12);
-    border-radius: 2px;
+    background: rgba(0,0,0,0.15); border-radius: 2px;
   }
   #speed-bar-fill {
     height: 3px; width: 50%;
-    background: rgba(255,255,255,0.7);
-    border-radius: 2px;
-    transition: width 0.1s;
+    background: rgba(0,0,0,0.5); border-radius: 2px; transition: width 0.1s;
   }
   #speed-label { font-size: 10px; letter-spacing: 0.2em; }
 
   #alt-wrap {
-    position: absolute;
-    right: 36px; top: 50%;
+    position: absolute; right: 36px; top: 50%;
     transform: translateY(-50%);
     display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
   }
   #alt-bar-bg {
     width: 3px; height: 120px;
-    background: rgba(255,255,255,0.12);
-    border-radius: 2px;
+    background: rgba(0,0,0,0.15); border-radius: 2px;
     display: flex; flex-direction: column-reverse;
   }
   #alt-bar-fill {
     width: 3px; height: 50%;
-    background: rgba(255,255,255,0.7);
-    border-radius: 2px;
-    transition: height 0.1s;
+    background: rgba(0,0,0,0.5); border-radius: 2px; transition: height 0.1s;
   }
   #alt-label { font-size: 10px; letter-spacing: 0.2em; }
 
   #crosshair {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 20px; height: 20px;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 18px; height: 18px;
   }
   #crosshair::before, #crosshair::after {
-    content: '';
-    position: absolute;
-    background: rgba(255,255,255,0.4);
+    content:''; position: absolute; background: rgba(0,0,0,0.35);
   }
-  #crosshair::before { width: 1px; height: 100%; left: 50%; transform: translateX(-50%); }
-  #crosshair::after  { width: 100%; height: 1px; top: 50%; transform: translateY(-50%); }
+  #crosshair::before { width:1px; height:100%; left:50%; transform:translateX(-50%); }
+  #crosshair::after  { width:100%; height:1px; top:50%; transform:translateY(-50%); }
 
   #controls {
-    position: absolute;
-    bottom: 20px; right: 36px;
-    text-align: right;
-    line-height: 2;
-    font-size: 10px;
-    opacity: 0.4;
+    position: absolute; bottom: 20px; right: 36px;
+    text-align: right; line-height: 2; font-size: 10px; opacity: 0.5;
+  }
+
+  #biome-label {
+    position: absolute; top: 22px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.25em; opacity: 0.45;
   }
 
   #crash-screen {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.75);
     align-items: center; justify-content: center;
     flex-direction: column; gap: 20px;
-    color: rgba(255,255,255,0.8);
-    font-size: 13px; letter-spacing: 0.2em;
-    text-transform: uppercase;
+    color: rgba(0,0,0,0.75);
+    font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase;
   }
   #crash-screen.show { display: flex; }
   #crash-screen h1 { font-size: 28px; font-weight: 300; letter-spacing: 0.5em; }
   #restart-btn {
-    margin-top: 10px;
-    padding: 10px 32px;
-    border: 1px solid rgba(255,255,255,0.35);
-    background: transparent;
-    color: rgba(255,255,255,0.7);
+    margin-top: 10px; padding: 10px 32px;
+    border: 1px solid rgba(0,0,0,0.3); background: transparent;
+    color: rgba(0,0,0,0.65);
     font-family: 'Courier New', monospace;
-    font-size: 11px; letter-spacing: 0.3em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    pointer-events: all;
+    font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s; pointer-events: all;
   }
-  #restart-btn:hover { background: rgba(255,255,255,0.08); }
+  #restart-btn:hover { background: rgba(0,0,0,0.06); }
 </style>
 </head>
 <body>
 
 <div id="hud">
   <div id="crosshair"></div>
+  <div id="biome-label" id="biome-label"></div>
 
   <div id="speed-bar-wrap">
     <div id="speed-bar-bg"><div id="speed-bar-fill"></div></div>
@@ -138,111 +120,112 @@
 </div>
 
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js"
-  }
-}
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js"}}
 </script>
 
 <script type="module">
 import * as THREE from 'three';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const FOG_NEAR      = 80;
-const FOG_FAR       = 420;
-const TERRAIN_SEGS  = 64;
-const TERRAIN_SIZE  = 600;
-const CHUNK_AHEAD   = 3;
-const SKY_TOP       = new THREE.Color(0x0a0a14);
-const SKY_HORIZON   = new THREE.Color(0x1a1a2e);
-const GROUND_COL    = new THREE.Color(0x0d1117);
-const GRID_COL      = new THREE.Color(0x1e3a5f);
-const PLANE_COL     = new THREE.Color(0xeaeaea);
-const SPEED_MIN     = 18;
-const SPEED_MAX     = 80;
-const SPEED_INIT    = 32;
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TERRAIN_SEGS = 72;
+const TERRAIN_SIZE = 700;
+const CHUNK_AHEAD  = 3;
+const SPEED_MIN    = 16;
+const SPEED_MAX    = 85;
+const SPEED_INIT   = 34;
+const SEED         = Math.random() * 9999;
 
-// ─── Scene setup ─────────────────────────────────────────────────────────────
+// ─── Renderer ────────────────────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = false;
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.9;
+renderer.toneMappingExposure = 1.1;
 document.body.appendChild(renderer.domElement);
 
-const scene  = new THREE.Scene();
-scene.fog    = new THREE.Fog(0x0a0a14, FOG_NEAR, FOG_FAR);
-scene.background = SKY_TOP;
+// ─── Scene / Sky ─────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.fog   = new THREE.Fog(0xc9e8f5, 120, 550);
 
-// Gradient sky via simple large sphere
-const skyGeo  = new THREE.SphereGeometry(800, 16, 8);
-const skyMat  = new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true });
-const skyColors = [];
-const skyPos   = skyGeo.attributes.position;
-for (let i = 0; i < skyPos.count; i++) {
-  const y = skyPos.getY(i);
-  const t = THREE.MathUtils.clamp((y + 200) / 400, 0, 1);
-  const c = SKY_TOP.clone().lerp(SKY_HORIZON, 1 - t);
-  skyColors.push(c.r, c.g, c.b);
+// Sky gradient sphere
+const skyGeo = new THREE.SphereGeometry(900, 16, 10);
+const skyCols = [];
+const skyP    = skyGeo.attributes.position;
+const COL_SKY_TOP  = new THREE.Color(0x2563b8);
+const COL_SKY_MID  = new THREE.Color(0x87ceeb);
+const COL_SKY_HORI = new THREE.Color(0xd6eef8);
+for (let i = 0; i < skyP.count; i++) {
+  const t = THREE.MathUtils.clamp((skyP.getY(i) + 100) / 500, 0, 1);
+  const c = t > 0.15
+    ? COL_SKY_MID.clone().lerp(COL_SKY_TOP, (t - 0.15) / 0.85)
+    : COL_SKY_HORI.clone().lerp(COL_SKY_MID, t / 0.15);
+  skyCols.push(c.r, c.g, c.b);
 }
-skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColors, 3));
-scene.add(new THREE.Mesh(skyGeo, skyMat));
+skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyCols, 3));
+scene.add(new THREE.Mesh(skyGeo,
+  new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })
+));
+scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+// ─── Lighting ─────────────────────────────────────────────────────────────────
+const sun = new THREE.DirectionalLight(0xfff5e0, 2.8);
+sun.position.set(200, 300, 100);
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0xb0d0f0, 1.6));
+// fill from below (sky bounce)
+const fill = new THREE.HemisphereLight(0x87ceeb, 0x5a8a40, 0.8);
+scene.add(fill);
 
-// Dim directional light – creates subtle highlights on plane
-const dirLight = new THREE.DirectionalLight(0x4466aa, 1.2);
-dirLight.position.set(80, 120, -40);
-scene.add(dirLight);
-scene.add(new THREE.AmbientLight(0x111122, 2.5));
+// ─── Camera ───────────────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.2, 1100);
 
-// ─── Noise (simple value noise) ──────────────────────────────────────────────
-function hash(n) {
-  n = Math.sin(n) * 43758.5453123;
-  return n - Math.floor(n);
-}
+// ─── Noise ────────────────────────────────────────────────────────────────────
+function hash(n) { const s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
 function noise2(x, z) {
   const ix = Math.floor(x), iz = Math.floor(z);
-  const fx = x - ix,       fz = z - iz;
-  const ux = fx * fx * (3 - 2 * fx);
-  const uz = fz * fz * (3 - 2 * fz);
-  const a = hash(ix     + iz     * 57);
-  const b = hash(ix + 1 + iz     * 57);
-  const c = hash(ix     + (iz+1) * 57);
-  const d = hash(ix + 1 + (iz+1) * 57);
-  return a + (b-a)*ux + (c-a)*uz + (b-a+a-b-c+d)*ux*uz;
+  const fx = x-ix, fz = z-iz;
+  const ux = fx*fx*(3-2*fx), uz = fz*fz*(3-2*fz);
+  const a = hash(ix   + iz*57), b = hash(ix+1 + iz*57);
+  const c = hash(ix   + (iz+1)*57), d = hash(ix+1 + (iz+1)*57);
+  return a+(b-a)*ux+(c-a)*uz+(b-a+a-b-c+d)*ux*uz;
 }
-function fbm(x, z, oct=5, seed=0) {
-  let v=0, amp=1, freq=1, max=0;
-  for (let i=0;i<oct;i++){
-    v   += noise2(x*freq + seed, z*freq + seed*1.3) * amp;
-    max += amp; amp *= 0.5; freq *= 2.1;
-  }
-  return v / max;
+function fbm(x, z, oct=6, seed=0) {
+  let v=0, a=1, f=1, m=0;
+  for(let i=0;i<oct;i++){ v+=noise2(x*f+seed,z*f+seed*1.7)*a; m+=a; a*=0.5; f*=2.1; }
+  return v/m;
 }
 
-// ─── Terrain chunks ──────────────────────────────────────────────────────────
-const terrainMat = new THREE.MeshLambertMaterial({
-  color: GROUND_COL,
-  wireframe: false,
-});
-const gridMat = new THREE.MeshBasicMaterial({
-  color: GRID_COL,
-  wireframe: true,
-  transparent: true,
-  opacity: 0.35,
-});
+// ─── Biome / height-to-color ─────────────────────────────────────────────────
+// Heights roughly: water<0, beach 0-3, grass 3-20, forest 20-38, rock 38-58, snow >58
+const BIOMES = [
+  { max: -10, col: new THREE.Color(0x1a5fa8) },  // deep water
+  { max: -2,  col: new THREE.Color(0x2e86c1) },  // water
+  { max:  1,  col: new THREE.Color(0xd4c07a) },  // wet sand
+  { max:  4,  col: new THREE.Color(0xe8d28a) },  // beach
+  { max: 14,  col: new THREE.Color(0x5aad3f) },  // grass
+  { max: 26,  col: new THREE.Color(0x3d7a30) },  // meadow
+  { max: 40,  col: new THREE.Color(0x7d6b5a) },  // rock
+  { max: 56,  col: new THREE.Color(0x9e8e80) },  // high rock
+  { max: Infinity, col: new THREE.Color(0xf0eeec) }, // snow
+];
 
-const chunks   = new Map();   // key: "cx,cz"
-const SEED     = Math.random() * 1000;
+function heightColor(y) {
+  for (const b of BIOMES) if (y < b.max) return b.col.clone();
+  return BIOMES[BIOMES.length-1].col.clone();
+}
 
+// ─── Terrain height ────────────────────────────────────────────────────────
 function getTerrainY(wx, wz) {
-  const scale = 0.004;
-  const h = fbm(wx * scale, wz * scale, 6, SEED);
-  return (h - 0.5) * 120;
+  const sc = 0.0035;
+  const h  = fbm(wx*sc, wz*sc, 6, SEED);
+  // bias: flatten low areas (water), exaggerate peaks
+  const v = (h - 0.42) * 160;
+  return v < 0 ? v * 0.4 : v;   // compress underwater, stretch land
 }
+
+// ─── Chunk system ─────────────────────────────────────────────────────────────
+const terrainMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const chunks = new Map();
 
 function createChunk(cx, cz) {
   const key = `${cx},${cz}`;
@@ -251,88 +234,86 @@ function createChunk(cx, cz) {
   const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, TERRAIN_SEGS, TERRAIN_SEGS);
   geo.rotateX(-Math.PI / 2);
 
-  const pos = geo.attributes.position;
+  const pos  = geo.attributes.position;
+  const cols = new Float32Array(pos.count * 3);
+
   for (let i = 0; i < pos.count; i++) {
     const wx = pos.getX(i) + cx * TERRAIN_SIZE;
     const wz = pos.getZ(i) + cz * TERRAIN_SIZE;
-    pos.setY(i, getTerrainY(wx, wz));
+    const y  = getTerrainY(wx, wz);
+    pos.setY(i, y);
+    const c = heightColor(y);
+    cols[i*3] = c.r; cols[i*3+1] = c.g; cols[i*3+2] = c.b;
   }
   pos.needsUpdate = true;
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
   geo.computeVertexNormals();
 
-  const solid = new THREE.Mesh(geo, terrainMat);
-  const grid  = new THREE.Mesh(geo, gridMat);
-  solid.position.set(cx * TERRAIN_SIZE, 0, cz * TERRAIN_SIZE);
-  grid.position.copy(solid.position);
-
-  scene.add(solid);
-  scene.add(grid);
-  chunks.set(key, { solid, grid, cx, cz });
+  const mesh = new THREE.Mesh(geo, terrainMat);
+  mesh.position.set(cx * TERRAIN_SIZE, 0, cz * TERRAIN_SIZE);
+  scene.add(mesh);
+  chunks.set(key, { mesh, cx, cz });
 }
 
 function updateChunks(px, pz) {
   const cx = Math.round(px / TERRAIN_SIZE);
   const cz = Math.round(pz / TERRAIN_SIZE);
-  for (let dx = -1; dx <= CHUNK_AHEAD; dx++) {
-    for (let dz = -2; dz <= 2; dz++) {
-      createChunk(cx + dx, cz + dz);
-    }
-  }
-  // remove distant chunks
-  for (const [key, chunk] of chunks) {
-    if (Math.abs(chunk.cx - cx) > CHUNK_AHEAD + 2 || Math.abs(chunk.cz - cz) > 3) {
-      scene.remove(chunk.solid);
-      scene.remove(chunk.grid);
-      chunk.solid.geometry.dispose();
-      chunks.delete(key);
+  for (let dx=-1; dx<=CHUNK_AHEAD; dx++)
+    for (let dz=-2; dz<=2; dz++)
+      createChunk(cx+dx, cz+dz);
+  for (const [key, ch] of chunks) {
+    if (Math.abs(ch.cx-cx) > CHUNK_AHEAD+2 || Math.abs(ch.cz-cz) > 3) {
+      scene.remove(ch.mesh); ch.mesh.geometry.dispose(); chunks.delete(key);
     }
   }
 }
 
-// ─── Airplane geometry (minimalist) ──────────────────────────────────────────
+// ─── Airplane ─────────────────────────────────────────────────────────────────
 function buildPlane() {
-  const g = new THREE.Group();
+  const g    = new THREE.Group();
+  const mW   = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const mRed = new THREE.MeshLambertMaterial({ color: 0xe53935 });
+  const mDark= new THREE.MeshLambertMaterial({ color: 0xbbbbbb });
 
-  const mat   = new THREE.MeshLambertMaterial({ color: PLANE_COL });
-  const matDim = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  // fuselage
+  const fGeo = new THREE.CylinderGeometry(0.24, 0.10, 3.4, 7);
+  fGeo.rotateZ(Math.PI/2);
+  g.add(new THREE.Mesh(fGeo, mW));
 
-  // fuselage – tapered box
-  const fuseGeo = new THREE.CylinderGeometry(0.22, 0.09, 3.2, 6);
-  fuseGeo.rotateZ(Math.PI / 2);
-  g.add(new THREE.Mesh(fuseGeo, mat));
-
-  // nose cone
-  const noseGeo = new THREE.ConeGeometry(0.22, 0.8, 6);
-  noseGeo.rotateZ(-Math.PI / 2);
-  const nose = new THREE.Mesh(noseGeo, mat);
-  nose.position.x = 2.0;
+  // nose
+  const nGeo = new THREE.ConeGeometry(0.24, 0.9, 7);
+  nGeo.rotateZ(-Math.PI/2);
+  const nose = new THREE.Mesh(nGeo, mRed);
+  nose.position.x = 2.15;
   g.add(nose);
 
-  // main wings
-  const wingGeo = new THREE.BoxGeometry(0.08, 0.04, 4.2);
-  const wings = new THREE.Mesh(wingGeo, mat);
-  wings.position.x = -0.3;
+  // cockpit bump
+  const cGeo = new THREE.SphereGeometry(0.18, 6, 5, 0, Math.PI*2, 0, Math.PI*0.5);
+  const cockpit = new THREE.Mesh(cGeo, new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 }));
+  cockpit.position.set(0.5, 0.2, 0);
+  g.add(cockpit);
+
+  // wings
+  const wGeo = new THREE.BoxGeometry(0.1, 0.04, 4.6);
+  const wings = new THREE.Mesh(wGeo, mW);
+  wings.position.x = -0.25;
   g.add(wings);
 
-  // wing sweep detail (leading edge line)
-  const wSweepL = new THREE.BoxGeometry(0.9, 0.03, 0.03);
-  [-1, 1].forEach(side => {
-    const ws = new THREE.Mesh(wSweepL, matDim);
-    ws.position.set(-0.05, 0, side * 1.5);
-    ws.rotation.y = side * 0.3;
-    g.add(ws);
+  // wing tips (red)
+  [-1,1].forEach(s => {
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.35), mRed);
+    tip.position.set(-0.25, 0, s*2.45);
+    g.add(tip);
   });
 
-  // horizontal stabiliser
-  const stabGeo = new THREE.BoxGeometry(0.06, 0.03, 1.6);
-  const stab = new THREE.Mesh(stabGeo, matDim);
-  stab.position.x = -1.45;
+  // stabiliser
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 1.8), mDark);
+  stab.position.x = -1.5;
   g.add(stab);
 
   // vertical tail
-  const vtGeo = new THREE.BoxGeometry(0.8, 0.55, 0.04);
-  const vt = new THREE.Mesh(vtGeo, mat);
-  vt.position.set(-1.3, 0.3, 0);
+  const vt = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.05), mRed);
+  vt.position.set(-1.35, 0.35, 0);
   g.add(vt);
 
   return g;
@@ -342,164 +323,154 @@ const airplane = buildPlane();
 scene.add(airplane);
 
 // ─── State ────────────────────────────────────────────────────────────────────
-const state = {
-  pos:      new THREE.Vector3(0, 60, 0),
-  vel:      new THREE.Vector3(SPEED_INIT, 0, 0),
-  pitch:    0,   // rad/s target
-  roll:     0,
-  yaw:      0,
-  speed:    SPEED_INIT,
-  heading:  new THREE.Euler(0, 0, 0, 'YXZ'),
-  quat:     new THREE.Quaternion(),
-  crashed:  false,
-  distKm:   0,
-  startTime: performance.now(),
-};
+function makeState() {
+  return {
+    pos:      new THREE.Vector3(0, 65, 0),
+    quat:     new THREE.Quaternion(),
+    speed:    SPEED_INIT,
+    crashed:  false,
+    distKm:   0,
+    startTime: performance.now(),
+  };
+}
+let state = makeState();
 
+// ─── Input ────────────────────────────────────────────────────────────────────
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.code] = true;  e.preventDefault(); });
-window.addEventListener('keyup',   e => { keys[e.code] = false; });
+window.addEventListener('keydown', e => { keys[e.code]=true;  e.preventDefault(); });
+window.addEventListener('keyup',   e => { keys[e.code]=false; });
 
-// ─── HUD elements ─────────────────────────────────────────────────────────────
-const spdBar   = document.getElementById('speed-bar-fill');
-const spdVal   = document.getElementById('spd-val');
-const altBar   = document.getElementById('alt-bar-fill');
-const altVal   = document.getElementById('alt-val');
-const crashScr = document.getElementById('crash-screen');
-const crashSco = document.getElementById('crash-score');
+// ─── HUD ─────────────────────────────────────────────────────────────────────
+const spdBar  = document.getElementById('speed-bar-fill');
+const spdVal  = document.getElementById('spd-val');
+const altBar  = document.getElementById('alt-bar-fill');
+const altVal  = document.getElementById('alt-val');
+const crashScr= document.getElementById('crash-screen');
+const crashSco= document.getElementById('crash-score');
 
 function updateHUD() {
-  const spdPct = (state.speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN) * 100;
-  spdBar.style.width = spdPct.toFixed(1) + '%';
-  spdVal.textContent = state.speed.toFixed(0);
-
-  const altPct = THREE.MathUtils.clamp(state.pos.y / 200 * 100, 0, 100);
-  altBar.style.height = altPct.toFixed(1) + '%';
+  const sp = (state.speed-SPEED_MIN)/(SPEED_MAX-SPEED_MIN)*100;
+  spdBar.style.width  = sp.toFixed(1)+'%';
+  spdVal.textContent  = state.speed.toFixed(0);
+  const ap = THREE.MathUtils.clamp(state.pos.y/220*100,0,100);
+  altBar.style.height = ap.toFixed(1)+'%';
   altVal.textContent  = state.pos.y.toFixed(0);
 }
 
-// ─── Main loop ────────────────────────────────────────────────────────────────
+// ─── Loop ─────────────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
-// camera follow offset (local to plane)
-const CAM_OFFSET = new THREE.Vector3(-12, 3, 0);
+// axes in airplane's LOCAL frame (plane faces +X, wings along Z, up along Y)
+const LOCAL_PITCH_AXIS = new THREE.Vector3(0, 0, 1); // roll around Z = pitch (nose up/down)
+const LOCAL_ROLL_AXIS  = new THREE.Vector3(1, 0, 0); // roll around X = bank
+const _pitchQ = new THREE.Quaternion();
+const _rollQ  = new THREE.Quaternion();
+const _worldAxis = new THREE.Vector3();
+const CAM_OFF = new THREE.Vector3(-14, 3.5, 0);
 
 function tick() {
   if (state.crashed) return;
   requestAnimationFrame(tick);
-
   const dt = Math.min(clock.getDelta(), 0.05);
 
-  // ── Controls ────────────────────────────────────────────────────────────
-  const PITCH_RATE  =  1.4;   // rad/s
-  const ROLL_RATE   =  1.8;
-  const SPEED_RATE  = 18;     // units/s²
+  // ── throttle ──────────────────────────────────────────────────────────────
+  const SPEED_RATE = 20;
+  if (keys['KeyW']) state.speed = Math.min(SPEED_MAX, state.speed + SPEED_RATE*dt);
+  if (keys['KeyS']) state.speed = Math.max(SPEED_MIN, state.speed - SPEED_RATE*dt);
 
-  let pitchInput = 0, rollInput = 0;
-  if (keys['ArrowUp'])   pitchInput = -1;
-  if (keys['ArrowDown']) pitchInput =  1;
-  if (keys['ArrowLeft']) rollInput  = -1;
-  if (keys['ArrowRight'])rollInput  =  1;
-  if (keys['KeyW']) state.speed = Math.min(SPEED_MAX, state.speed + SPEED_RATE * dt);
-  if (keys['KeyS']) state.speed = Math.max(SPEED_MIN, state.speed - SPEED_RATE * dt);
+  // ── attitude (quaternion-based, local axes) ───────────────────────────────
+  const PITCH_RATE = 1.3;  // rad/s
+  const ROLL_RATE  = 1.7;
 
-  // Smooth attitude
-  const PITCH_DAMP = 2.5, ROLL_DAMP = 2.5;
-  state.pitch += (pitchInput * PITCH_RATE - state.pitch) * PITCH_DAMP * dt;
-  state.roll  += (rollInput  * ROLL_RATE  - state.roll ) * ROLL_DAMP  * dt;
-  // yaw from roll (coordinated turn)
-  state.yaw   = -state.roll * 0.28;
+  // ↑ = nose up  (rotate local +Z axis: positive pitch)
+  // ↓ = nose down
+  // ← = bank left (rotate local -X)
+  // → = bank right
+  let pitchDir = 0, rollDir = 0;
+  if (keys['ArrowUp'])    pitchDir =  1;
+  if (keys['ArrowDown'])  pitchDir = -1;
+  if (keys['ArrowLeft'])  rollDir  = -1;
+  if (keys['ArrowRight']) rollDir  =  1;
 
-  // Euler heading (YXZ: yaw, pitch, roll)
-  state.heading.x += state.pitch * dt;
-  state.heading.y += state.yaw   * dt;
-  state.heading.z  = state.roll  * 0.65;
+  // world-space pitch axis = local Z rotated by current quat
+  _worldAxis.copy(LOCAL_PITCH_AXIS).applyQuaternion(state.quat);
+  _pitchQ.setFromAxisAngle(_worldAxis, pitchDir * PITCH_RATE * dt);
+  state.quat.premultiply(_pitchQ);
 
-  // clamp pitch to avoid inversion
-  state.heading.x = THREE.MathUtils.clamp(state.heading.x, -Math.PI * 0.38, Math.PI * 0.38);
+  // world-space roll axis = local X rotated by current quat
+  _worldAxis.copy(LOCAL_ROLL_AXIS).applyQuaternion(state.quat);
+  _rollQ.setFromAxisAngle(_worldAxis, rollDir * ROLL_RATE * dt);
+  state.quat.premultiply(_rollQ);
 
-  state.quat.setFromEuler(state.heading);
+  // coordinated yaw from roll — extract roll angle and add yaw
+  const rightVec  = new THREE.Vector3(0,0,1).applyQuaternion(state.quat);
+  const bankAngle = Math.asin(THREE.MathUtils.clamp(rightVec.y, -1, 1));
+  const yawRate   = -bankAngle * 0.55;
+  const _yawQ     = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yawRate*dt);
+  state.quat.premultiply(_yawQ);
 
-  // Forward direction
-  const forward = new THREE.Vector3(1, 0, 0).applyQuaternion(state.quat);
+  // ── movement ──────────────────────────────────────────────────────────────
+  const forward = new THREE.Vector3(1,0,0).applyQuaternion(state.quat);
 
-  // Gravity component (pull toward earth when not pointing up)
-  const gravity = 9.8;
-  const lift    = state.speed * 0.38;  // crude lift model
-  const gravNet = (gravity - lift * Math.abs(Math.cos(state.heading.x))) * 0.012;
+  // simple gravity / lift
+  const pitchUp  = forward.y;                      // +1 = pointing up
+  const liftComp = state.speed * 0.014;
+  const gravDrop = (9.8 - liftComp * 14) * 0.008;
 
-  const velocity = forward.clone().multiplyScalar(state.speed);
-  velocity.y -= gravNet * state.speed * dt * 0.4;
+  state.pos.addScaledVector(forward, state.speed * dt);
+  state.pos.y -= gravDrop * state.speed * dt;
 
-  state.pos.addScaledVector(velocity, dt);
+  // soft altitude limits
+  if (state.pos.y > 280) state.pos.y = 280;
+
   state.distKm += state.speed * dt / 1000;
 
-  // ── Terrain collision ──────────────────────────────────────────────────
-  const groundY = getTerrainY(state.pos.x, state.pos.z) + 1.5;
-  if (state.pos.y < groundY) {
-    doCrash();
-    return;
-  }
-  // ceiling
-  if (state.pos.y > 320) state.pos.y = 320;
+  // ── collision ─────────────────────────────────────────────────────────────
+  const groundY = getTerrainY(state.pos.x, state.pos.z) + 1.8;
+  if (state.pos.y < groundY) { doCrash(); return; }
 
-  // ── Update airplane mesh ───────────────────────────────────────────────
+  // ── airplane mesh ─────────────────────────────────────────────────────────
   airplane.position.copy(state.pos);
   airplane.quaternion.copy(state.quat);
 
-  // ── Camera ────────────────────────────────────────────────────────────
-  const camTarget = CAM_OFFSET.clone().applyQuaternion(state.quat).add(state.pos);
-  camera.position.lerp(camTarget, 8 * dt);
-  camera.lookAt(state.pos.clone().addScaledVector(forward, 6));
+  // ── camera ────────────────────────────────────────────────────────────────
+  const camTarget = CAM_OFF.clone().applyQuaternion(state.quat).add(state.pos);
+  camera.position.lerp(camTarget, 7*dt);
+  camera.lookAt(state.pos.clone().addScaledVector(forward, 8));
 
-  // ── Chunks ────────────────────────────────────────────────────────────
+  // ── sun follows (so lighting is always good) ──────────────────────────────
+  sun.position.set(state.pos.x+200, state.pos.y+300, state.pos.z+100);
+
   updateChunks(state.pos.x, state.pos.z);
-
   updateHUD();
   renderer.render(scene, camera);
 }
 
 function doCrash() {
   state.crashed = true;
-  const secs = ((performance.now() - state.startTime) / 1000).toFixed(0);
-  crashSco.textContent = `distance ${(state.distKm).toFixed(2)} km  ·  time ${secs}s`;
+  const secs = ((performance.now()-state.startTime)/1000).toFixed(0);
+  crashSco.textContent = `distance ${state.distKm.toFixed(2)} km  ·  time ${secs}s`;
   crashScr.classList.add('show');
 }
 
 window.restartGame = function() {
-  // clean chunks
-  for (const [, chunk] of chunks) {
-    scene.remove(chunk.solid);
-    scene.remove(chunk.grid);
-    chunk.solid.geometry.dispose();
-  }
+  for (const [,ch] of chunks) { scene.remove(ch.mesh); ch.mesh.geometry.dispose(); }
   chunks.clear();
-
-  state.pos.set(0, 60, 0);
-  state.speed   = SPEED_INIT;
-  state.heading.set(0, 0, 0);
-  state.quat.setFromEuler(state.heading);
-  state.pitch   = 0;
-  state.roll    = 0;
-  state.yaw     = 0;
-  state.distKm  = 0;
-  state.startTime = performance.now();
-  state.crashed = false;
+  state = makeState();
+  airplane.position.copy(state.pos);
+  airplane.quaternion.copy(state.quat);
   crashScr.classList.remove('show');
-
-  updateChunks(0, 0);
-  clock.getDelta(); // reset delta
+  updateChunks(0,0);
+  clock.getDelta();
   tick();
 };
 
-// ── Resize ──────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 
-// ── Boot ────────────────────────────────────────────────────────────────────
-updateChunks(0, 0);
+updateChunks(0,0);
 tick();
 </script>
 </body>
