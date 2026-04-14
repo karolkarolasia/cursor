@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Warriors – Into the Wild</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; background:#0d0d0d; overflow:hidden;
+              font-family:'Courier New',monospace; }
+  #wrap {
+    width:100%; height:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display:block;
+    border: 2px solid #333;
+  }
+  #bar {
+    width:100%; max-width:800px;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 10px;
+    color:#aaa; font-size:11px; letter-spacing:0.15em; text-transform:uppercase;
+  }
+  #dialogue-box {
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:800px;
+    background:rgba(10,8,6,0.92);
+    border-top:1px solid #555;
+    padding:14px 20px 10px;
+    color:#e8dcc8;
+    font-size:13px; line-height:1.7;
+    display:none;
+  }
+  #dialogue-box .speaker { color:#f5c842; font-size:11px; letter-spacing:0.2em; margin-bottom:4px; }
+  #dialogue-box .hint { color:#666; font-size:10px; margin-top:8px; letter-spacing:0.15em; }
+  #title-screen {
+    position:fixed; inset:0;
+    background:#0d0d0d;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; color:#e8dcc8;
+    z-index:10;
+  }
+  #title-screen h1 {
+    font-size:clamp(22px,5vw,42px);
+    letter-spacing:0.4em; font-weight:400;
+    color:#f5c842;
+  }
+  #title-screen .sub { font-size:12px; letter-spacing:0.3em; color:#888; }
+  #title-screen .chapter { font-size:14px; letter-spacing:0.25em; color:#bbb; margin-top:8px; }
+  #title-screen .controls-hint {
+    margin-top:24px; font-size:11px; color:#555; letter-spacing:0.15em; line-height:2.2; text-align:center;
+  }
+  #start-btn {
+    margin-top:10px; padding:10px 36px;
+    border:1px solid #f5c842; background:transparent;
+    color:#f5c842; font-family:'Courier New',monospace;
+    font-size:12px; letter-spacing:0.3em; text-transform:uppercase;
+    cursor:pointer; transition:all 0.2s;
+  }
+  #start-btn:hover { background:rgba(245,200,66,0.1); }
+</style>
+</head>
+<body>
+<div id="title-screen">
+  <div class="sub">erin hunter</div>
+  <h1>WARRIORS</h1>
+  <div class="chapter">Into the Wild &nbsp;·&nbsp; Chapter I</div>
+  <div class="controls-hint">
+    move &nbsp; ← → &nbsp;/&nbsp; A D &nbsp;/&nbsp; J L<br>
+    jump &nbsp; ↑ &nbsp;/&nbsp; W &nbsp;/&nbsp; I &nbsp;/&nbsp; SPACE<br>
+    sneak &nbsp; ↓ &nbsp;/&nbsp; S &nbsp;/&nbsp; K<br>
+    interact &nbsp; E &nbsp;/&nbsp; ENTER
+  </div>
+  <button id="start-btn" onclick="startGame()">begin</button>
+</div>
+
+<div id="wrap">
+  <div id="bar">
+    <span id="bar-name">Rusty</span>
+    <span id="bar-loc">Twoleg Place</span>
+    <span id="bar-lives">♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥</span>
+  </div>
+  <canvas id="c"></canvas>
+</div>
+
+<div id="dialogue-box">
+  <div class="speaker" id="d-speaker"></div>
+  <div id="d-text"></div>
+  <div class="hint">[ ENTER / E — continue ]</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  WARRIORS ENGINE – v0.1  (Chapter I: The Moonstone Call)
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Canvas setup ─────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const SCALE  = 3;           // pixel size multiplier
+const W = 256, H = 144;     // internal resolution (256×144 ≈ 16:9)
+canvas.width  = W * SCALE;
+canvas.height = H * SCALE;
+ctx.imageSmoothingEnabled = false;
+
+// fit canvas to screen maintaining aspect
+function resize() {
+  const sw = window.innerWidth, sh = window.innerHeight - 40;
+  const s  = Math.min(sw / (W*SCALE), sh / (H*SCALE));
+  canvas.style.width  = (W*SCALE*s)+'px';
+  canvas.style.height = (H*SCALE*s)+'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Palette (pixel-art earthy tones) ─────────────────────────────────
+const P = {
+  sky1:   '#6aa3c8', sky2:   '#c4ddf0',
+  sun:    '#fff5a0',
+  leaf1:  '#3a6b2a', leaf2:  '#4f8c38', leaf3:  '#2a4e1e',
+  bark:   '#5c3d1e', bark2:  '#7a5230',
+  grass1: '#4e8032', grass2: '#6aad44', grass3: '#38601f',
+  dirt:   '#8b6340', dirt2:  '#a07848',
+  stone:  '#7a7a7a', stone2: '#959595',
+  fence:  '#b89060',
+  water:  '#2a6fa8', water2: '#3d8fc8',
+  shadow: 'rgba(0,0,0,0.18)',
+  black:  '#111111',
+  white:  '#f0eeea',
+  ui_hp:  '#c84040',
+};
+
+// ── Input ─────────────────────────────────────────────────────────────
+const keys = {};
+const KEY = {
+  left:     ['ArrowLeft','KeyA','KeyJ'],
+  right:    ['ArrowRight','KeyD','KeyL'],
+  up:       ['ArrowUp','KeyW','KeyI','Space'],
+  down:     ['ArrowDown','KeyS','KeyK'],
+  interact: ['KeyE','Enter'],
+};
+window.addEventListener('keydown', e => { keys[e.code]=true;  e.preventDefault(); });
+window.addEventListener('keyup',   e => { keys[e.code]=false; });
+
+function pressed(action) { return KEY[action].some(k => keys[k]); }
+function justPressed(action) {
+  return KEY[action].some(k => justKeys[k]);
+}
+const justKeys = {};
+window.addEventListener('keydown', e => { justKeys[e.code]=true; });
+// clear justKeys each frame at end of update
+
+// ── Physics constants ──────────────────────────────────────────────────
+const GRAVITY  = 0.38;
+const JUMP_V   = -6.8;
+const WALK_SPD = 1.6;
+const SNEAK_SPD= 0.7;
+const MAX_FALL = 9;
+
+// ── Camera ────────────────────────────────────────────────────────────
+const cam = { x:0, y:0 };
+function worldToScreen(wx, wy) {
+  return { x: wx - cam.x, y: wy - cam.y };
+}
+
+// ── Tile map (16×9 tiles, 16px each → 256×144) ───────────────────────
+const TILE = 16;
+const COLS = Math.ceil(W / TILE) + 2;
+const ROWS = Math.ceil(H / TILE) + 2;
+
+// ── Level data – Chapter I: Twoleg Place garden ──────────────────────
+// Extended world: 80 columns × 16 rows
+// 0=air 1=grass-top 2=dirt 3=stone 4=bark 5=leaves 6=water 7=fence 8=grass-top(tall bg) 9=stone-plat
+const WORLD_W = 80, WORLD_H = 16;
+const map = [
+// Row  0
+  [0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0],
+// Row  1  (leaves / treetops)
+  [0,0,0,5,5,5,0,0,0,0, 0,0,0,0,0,0,0,0,5,5, 5,5,5,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,5,5,5,5,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,5,5,5,5,0,0,0],
+// Row  2
+  [0,0,5,5,5,5,5,0,0,0, 0,0,0,0,0,0,5,5,5,5, 5,5,5,5,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,5,5,5,5,5,5,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,5,5,5,5,5,5,0,0],
+// Row  3  (platforms / trunks)
+  [0,0,5,5,5,5,5,0,0,0, 0,0,0,0,0,4,4,0,5,5, 5,5,5,5,0,0,0,0,0,0, 0,9,9,9,0,0,0,0,0,0, 0,0,0,5,5,5,5,5,5,0, 0,0,0,9,9,9,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,5,5,5,5,5,5,0,0],
+// Row  4
+  [0,0,0,4,4,4,0,0,0,0, 0,0,0,0,0,4,4,0,0,5, 5,5,5,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,4,4,4,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,4,4,4,4,0,0,0],
+// Row  5  (mid air platforms)
+  [0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,4,4,0,0,0, 0,0,0,0,0,0,9,9,9,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,9,9,9,9,0,0,0,0, 0,0,0,0,0,0,0,0,0,0],
+// Row  6  (fence top)
+  [0,0,0,0,0,0,0,0,0,0, 0,0,7,0,0,4,4,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,6,6, 6,6,6,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0],
+// Row  7  (fence + water)
+  [0,0,0,0,0,0,0,0,0,0, 0,0,7,0,0,4,4,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,6,6, 6,6,6,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0],
+// Row  8  (ground surface)
+  [1,1,1,1,1,1,1,1,1,1, 1,1,7,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,6,6, 6,6,6,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1],
+// Rows 9-15: dirt / stone fill
+  [2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,2,2],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+  [3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3, 3,3,3,3,3,3,3,3,3,3],
+];
+
+function isSolid(t) { return t===1||t===2||t===3||t===4||t===7||t===9; }
+function isLiquid(t){ return t===6; }
+
+function getTile(col, row) {
+  if (col<0||col>=WORLD_W||row<0||row>=WORLD_H) return (row>=WORLD_H)?2:0;
+  return map[row][col];
+}
+
+// ── Entities ──────────────────────────────────────────────────────────
+// NPC definitions (world-space positions)
+const NPCS = [
+  { id:'smudge', name:'Smudge', x:56, y:112, w:10, h:10,
+    color:'#888', markColor:'#fff',
+    lines:[
+      'There\'s a whole world out there beyond the fence, Rusty.',
+      'I heard the wild cats talking last night...',
+      'They called to you. I know they did.',
+    ]
+  },
+  { id:'warrior', name:'Graypaw', x:330, y:112, w:10, h:10,
+    color:'#999', markColor:'#ccc',
+    lines:[
+      'Hey, kittypet! You\'re on ThunderClan territory.',
+      'My name is Graypaw. I almost had you back there.',
+      'Come — Bluestar will want to see you.',
+    ]
+  },
+  { id:'bluestar', name:'Bluestar', x:680, y:112, w:12, h:10,
+    color:'#6688aa', markColor:'#aaccee',
+    lines:[
+      'I am Bluestar, leader of ThunderClan.',
+      'I have been watching you, young one.',
+      'You fight with the heart of a warrior. Stay with us.',
+      'From this day forward, you shall be known as Firepaw.',
+    ]
+  },
+];
+
+// Triggers (invisible zones that fire dialogue or scene changes)
+const TRIGGERS = [
+  { x:288, y:96, w:32, h:48, id:'forest_border', once:true,
+    speaker:'', text:'[ You reach the edge of the forest.\n  A strange scent fills your nose… ]\n  » Keep going →' },
+  { x:600, y:96, w:16, h:48, id:'clan_camp', once:true,
+    speaker:'', text:'[ The trees part to reveal a clearing.\n  This must be the ThunderClan camp. ]' },
+];
+const firedTriggers = new Set();
+
+// ── Player ────────────────────────────────────────────────────────────
+const player = {
+  x: 28, y: 104,       // world position (top-left of bounding box)
+  w: 10, h: 10,
+  vx: 0, vy: 0,
+  onGround: false,
+  dir: 1,               // 1=right -1=left
+  sneaking: false,
+  anim: 'idle',
+  frame: 0,
+  animTimer: 0,
+  hp: 9,
+  name: 'Rusty',
+};
+
+// ── Dialogue system ───────────────────────────────────────────────────
+const dlg = { active: false, lines:[], idx:0, speaker:'' };
+const dlgBox  = document.getElementById('dialogue-box');
+const dlgText = document.getElementById('d-text');
+const dlgSpkr = document.getElementById('d-speaker');
+
+function openDialogue(speaker, lines) {
+  dlg.active=true; dlg.lines=lines; dlg.idx=0; dlg.speaker=speaker;
+  showDlgLine();
+  dlgBox.style.display='block';
+}
+function showDlgLine() {
+  dlgSpkr.textContent = dlg.speaker ? dlg.speaker.toUpperCase() : '—';
+  dlgText.textContent = dlg.lines[dlg.idx];
+}
+function advanceDlg() {
+  dlg.idx++;
+  if (dlg.idx >= dlg.lines.length) {
+    dlg.active=false;
+    dlgBox.style.display='none';
+  } else { showDlgLine(); }
+}
+
+// ── Particle system (leaf/dust) ───────────────────────────────────────
+const particles = [];
+function spawnDust(x, y) {
+  for(let i=0;i<4;i++) particles.push({
+    x:x+Math.random()*6-3, y,
+    vx:(Math.random()-0.5)*0.8, vy:-Math.random()*1.2-0.3,
+    life:1, maxLife:18+Math.random()*12,
+    col: Math.random()>0.5 ? P.dirt : P.grass2,
+    r: 1+Math.random(),
+  });
+}
+function spawnLeaves(x,y) {
+  for(let i=0;i<3;i++) particles.push({
+    x:x+Math.random()*8-4, y:y+Math.random()*4,
+    vx:(Math.random()-0.5)*1.2, vy:-Math.random()*0.6,
+    life:1, maxLife:30+Math.random()*20,
+    col: [P.leaf1,P.leaf2,P.leaf3][Math.floor(Math.random()*3)],
+    r:1.5,
+  });
+}
+
+// ── Collision helpers ──────────────────────────────────────────────────
+function resolveX(e) {
+  const left  = Math.floor(e.x / TILE);
+  const right = Math.floor((e.x + e.w - 1) / TILE);
+  const top   = Math.floor(e.y / TILE);
+  const bot   = Math.floor((e.y + e.h - 1) / TILE);
+  for (let r=top; r<=bot; r++) {
+    if (e.vx > 0 && isSolid(getTile(right, r))) {
+      e.x = right * TILE - e.w; e.vx = 0; break;
+    }
+    if (e.vx < 0 && isSolid(getTile(left, r))) {
+      e.x = (left+1)*TILE; e.vx = 0; break;
+    }
+  }
+}
+function resolveY(e) {
+  const left  = Math.floor(e.x / TILE);
+  const right = Math.floor((e.x + e.w - 1) / TILE);
+  const top   = Math.floor(e.y / TILE);
+  const bot   = Math.floor((e.y + e.h - 1) / TILE);
+  e.onGround = false;
+  if (e.vy > 0) {
+    for (let c=left; c<=right; c++) {
+      if (isSolid(getTile(c, bot+1)) || (isLiquid(getTile(c,bot+1)) && e.vy>0.5)) {
+        e.y = (bot+1)*TILE - e.h; e.vy=0; e.onGround=true; break;
+      }
+    }
+  }
+  if (e.vy < 0) {
+    for (let c=left; c<=right; c++) {
+      if (isSolid(getTile(c, top))) {
+        e.y = (top+1)*TILE; e.vy=0; break;
+      }
+    }
+  }
+  // liquid slowdown
+  const midC = Math.floor((e.x+e.w/2)/TILE);
+  const midR = Math.floor((e.y+e.h/2)/TILE);
+  if (isLiquid(getTile(midC,midR))) {
+    e.vy   *= 0.7;
+    e.onGround = true;   // can "jump" out of water
+  }
+}
+
+// ── Draw helpers ──────────────────────────────────────────────────────
+function fillRect(col,x,y,w,h) {
+  ctx.fillStyle=col;
+  ctx.fillRect(Math.round(x),Math.round(y),w,h);
+}
+function pixel(col,x,y) { fillRect(col,x,y,1,1); }
+
+// ── Draw tile ─────────────────────────────────────────────────────────
+function drawTile(t, sx, sy) {
+  const x=Math.round(sx), y=Math.round(sy);
+  switch(t) {
+    case 1: // grass top
+      fillRect(P.grass1,x,y,TILE,TILE);
+      fillRect(P.grass2,x,y,TILE,3);
+      // grass blades
+      for(let i=1;i<TILE;i+=3){ fillRect(P.grass3,x+i,y-1,1,2); }
+      break;
+    case 2: // dirt
+      fillRect(P.dirt,x,y,TILE,TILE);
+      fillRect(P.dirt2,x,y+2,TILE,1);
+      break;
+    case 3: // stone
+      fillRect(P.stone,x,y,TILE,TILE);
+      fillRect(P.stone2,x+1,y+1,TILE-2,3);
+      break;
+    case 4: // bark
+      fillRect(P.bark,x,y,TILE,TILE);
+      fillRect(P.bark2,x+3,y,3,TILE);
+      fillRect(P.bark2,x+10,y,2,TILE);
+      break;
+    case 5: // leaves
+      fillRect(P.leaf2,x,y,TILE,TILE);
+      fillRect(P.leaf1,x+2,y+2,TILE-4,TILE-4);
+      fillRect(P.leaf3,x,y,2,2);
+      fillRect(P.leaf3,x+TILE-2,y+TILE-2,2,2);
+      break;
+    case 6: // water
+      fillRect(P.water,x,y,TILE,TILE);
+      // animated shimmer via time
+      const wt = (Date.now()/600 + sx*0.05) % 1;
+      fillRect(P.water2,x,y+Math.floor(wt*4),TILE,2);
+      break;
+    case 7: // fence
+      fillRect(P.fence,x+6,y,3,TILE);
+      fillRect(P.fence,x,y+3,TILE,3);
+      fillRect(P.fence,x,y+9,TILE,3);
+      break;
+    case 9: // stone platform
+      fillRect(P.stone,x,y,TILE,TILE/2);
+      fillRect(P.stone2,x,y,TILE,3);
+      break;
+  }
+}
+
+// ── Draw cat sprite (pixel art procedural) ────────────────────────────
+// bx,by = bottom-center of cat in screen coords
+function drawCat(bx, by, dir, col, markCol, sneaking, anim, frame, shadow) {
+  const flip = dir < 0;
+  const sx = flip ? -1 : 1;
+  // body walk offset
+  const walkBob = (anim==='walk') ? Math.sin(frame*0.5)*1 : 0;
+  const legOff  = (anim==='walk') ? Math.sin(frame*0.5)*2 : 0;
+
+  ctx.save();
+  ctx.translate(Math.round(bx), Math.round(by));
+  ctx.scale(sx, 1);
+
+  const sneakY = sneaking ? 2 : 0;
+
+  // shadow
+  if(shadow) {
+    ctx.globalAlpha=0.18; fillRect('#000',-5,0,10,2); ctx.globalAlpha=1;
+  }
+
+  // tail
+  if(anim==='idle' || anim==='sneak') {
+    fillRect(col, 4, -5-sneakY, 2, 4);
+    fillRect(col, 5, -6-sneakY, 3, 2);
+    fillRect(markCol||col, 6, -5-sneakY, 2, 1);
+  } else {
+    // wagging tail
+    const tw = Math.sin(frame*0.4)*2;
+    fillRect(col, 4, -6-sneakY+tw, 2, 5);
+    fillRect(col, 5,-7-sneakY+tw,3,2);
+  }
+
+  // body
+  fillRect(col,  -5, -9-sneakY, 10, 7);
+  // belly lighter stripe
+  fillRect(markCol||col, -3, -7-sneakY, 6, 4);
+
+  // legs
+  if(!sneaking) {
+    fillRect(col, -4, -3+legOff, 2, 3+walkBob);
+    fillRect(col,  1, -3-legOff, 2, 3-walkBob);
+    // back legs
+    fillRect(col, -3, -2, 2, 3);
+    fillRect(col,  2, -2, 2, 3);
+  } else {
+    fillRect(col,-4,-2,2,2); fillRect(col,1,-2,2,2);
+    fillRect(col,-3,-1,2,2); fillRect(col,2,-1,2,2);
+  }
+
+  // head
+  const hy = -13-sneakY;
+  fillRect(col, -4, hy, 9, 7);
+  // ears
+  fillRect(col, -4, hy-2, 3, 3);
+  fillRect(col,  3, hy-2, 3, 3);
+  fillRect('#e8aaa0',-3, hy-1, 2, 2); // inner ear
+  fillRect('#e8aaa0', 4, hy-1, 2, 2);
+  // eyes
+  fillRect(P.black, -2, hy+1, 2, 2);
+  fillRect(P.black,  2, hy+1, 2, 2);
+  fillRect('#7fc87f',-2,hy+1,1,1); // eye shine (green for Rusty=Firepaw)
+  fillRect('#7fc87f', 2,hy+1,1,1);
+  // nose
+  fillRect('#e08080', 0, hy+4, 2, 1);
+  // whiskers
+  fillRect(P.white, -6, hy+3, 3, 1);
+  fillRect(P.white,  4, hy+3, 3, 1);
+
+  ctx.restore();
+}
+
+// ── Draw NPC cat ──────────────────────────────────────────────────────
+function drawNPC(npc) {
+  const sx = npc.x - cam.x + npc.w/2;
+  const sy = npc.y - cam.y + npc.h;
+  drawCat(sx, sy, -1, npc.color, npc.markColor, false, 'idle', 0, true);
+  // name tag
+  const canInteract = Math.abs(player.x+player.w/2 - (npc.x+npc.w/2)) < 28 &&
+                      Math.abs(player.y - npc.y) < 24;
+  if(canInteract) {
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    const tw = npc.name.length * 5 + 6;
+    ctx.fillRect(sx-tw/2, sy-22, tw, 10);
+    ctx.fillStyle='#f5c842';
+    ctx.font='7px monospace';
+    ctx.textAlign='center';
+    ctx.fillText('[E] '+npc.name, sx, sy-14);
+  }
+}
+
+// ── Draw player ───────────────────────────────────────────────────────
+function drawPlayer() {
+  const sx = player.x - cam.x + player.w/2;
+  const sy = player.y - cam.y + player.h;
+  drawCat(sx, sy, player.dir, '#cc5500', '#f5a050', player.sneaking, player.anim, player.frame, true);
+}
+
+// ── Draw background (parallax sky + sun) ─────────────────────────────
+function drawBG() {
+  // sky gradient
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, P.sky1);
+  grad.addColorStop(1, P.sky2);
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+  // sun
+  const sunX = W*0.75 - cam.x*0.05;
+  const sunY = 18;
+  ctx.fillStyle=P.sun;
+  ctx.beginPath(); ctx.arc(sunX,sunY,10,0,Math.PI*2); ctx.fill();
+  // glow
+  ctx.globalAlpha=0.18;
+  ctx.beginPath(); ctx.arc(sunX,sunY,16,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+
+  // distant hills (parallax layer 0.2)
+  const hx = -cam.x*0.2;
+  for(let i=0;i<6;i++){
+    const hbx=(i*60+hx)%( W+80)-40;
+    ctx.fillStyle=P.leaf3;
+    ctx.beginPath();
+    ctx.ellipse(hbx, H*0.57, 40+i*8, 18+i*3, 0, Math.PI, 0);
+    ctx.fill();
+  }
+}
+
+// ── Draw world ────────────────────────────────────────────────────────
+function drawWorld() {
+  const startC = Math.floor(cam.x / TILE) - 1;
+  const startR = Math.floor(cam.y / TILE) - 1;
+  for(let r=startR; r<startR+ROWS+2; r++) {
+    for(let c=startC; c<startC+COLS+2; c++) {
+      const t = getTile(c, r);
+      if(t===0) continue;
+      drawTile(t, c*TILE - cam.x, r*TILE - cam.y);
+    }
+  }
+}
+
+// ── Draw particles ────────────────────────────────────────────────────
+function drawParticles() {
+  for(const p of particles) {
+    ctx.globalAlpha = p.life/p.maxLife;
+    fillRect(p.col, p.x-cam.x, p.y-cam.y, p.r*2, p.r*2);
+  }
+  ctx.globalAlpha=1;
+}
+
+// ── Draw HUD ──────────────────────────────────────────────────────────
+function drawHUD() {
+  // HP pips
+  const hpEl = document.getElementById('bar-lives');
+  hpEl.textContent = '♥'.repeat(player.hp) + '♡'.repeat(9-player.hp);
+}
+
+// ── Update particles ──────────────────────────────────────────────────
+function updateParticles(dt) {
+  for(let i=particles.length-1;i>=0;i--) {
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+// ── Update player ─────────────────────────────────────────────────────
+let animTick = 0;
+function updatePlayer(dt) {
+  if(dlg.active) { player.vx=0; return; }
+
+  const movingL = pressed('left');
+  const movingR = pressed('right');
+  const jumping = pressed('up');
+  const sneaking= pressed('down');
+  player.sneaking = sneaking && player.onGround;
+
+  const spd = player.sneaking ? SNEAK_SPD : WALK_SPD;
+
+  if(movingL)  { player.vx=-spd; player.dir=-1; }
+  else if(movingR) { player.vx= spd; player.dir= 1; }
+  else         { player.vx*=0.75; }
+
+  if(jumping && player.onGround) {
+    player.vy = JUMP_V;
+    spawnDust(player.x+player.w/2, player.y+player.h);
+  }
+
+  player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
+
+  player.x += player.vx;
+  resolveX(player);
+  player.y += player.vy;
+  resolveY(player);
+
+  // world bounds
+  player.x = Math.max(0, Math.min(player.x, WORLD_W*TILE - player.w));
+
+  // animation state
+  if(!player.onGround) { player.anim='jump'; }
+  else if(player.sneaking) { player.anim='sneak'; }
+  else if(Math.abs(player.vx)>0.3) { player.anim='walk'; }
+  else { player.anim='idle'; }
+
+  animTick++;
+  if(animTick%6===0) player.frame++;
+
+  // leaf spawn near trees (tiles 4,5)
+  if(animTick%40===0) {
+    const mc = Math.floor((player.x+player.w/2)/TILE);
+    const mr = Math.floor(player.y/TILE)-1;
+    if(getTile(mc,mr)===5) spawnLeaves(player.x+player.w/2, player.y);
+  }
+}
+
+// ── Update camera ─────────────────────────────────────────────────────
+function updateCamera() {
+  const tx = player.x + player.w/2 - W/2;
+  const ty = player.y + player.h/2 - H/2;
+  cam.x += (tx - cam.x) * 0.1;
+  cam.y += (ty - cam.y) * 0.1;
+  cam.x = Math.max(0, Math.min(cam.x, WORLD_W*TILE - W));
+  cam.y = Math.max(0, Math.min(cam.y, WORLD_H*TILE - H));
+}
+
+// ── Check triggers ────────────────────────────────────────────────────
+function checkTriggers() {
+  for(const tr of TRIGGERS) {
+    if(firedTriggers.has(tr.id) && tr.once) continue;
+    if(player.x+player.w > tr.x && player.x < tr.x+tr.w &&
+       player.y+player.h > tr.y && player.y < tr.y+tr.h) {
+      if(tr.once) firedTriggers.add(tr.id);
+      openDialogue(tr.speaker, [tr.text]);
+    }
+  }
+}
+
+// ── Check NPC interaction ──────────────────────────────────────────────
+function checkNPCInteraction() {
+  if(!justPressed('interact')) return;
+  if(dlg.active) { advanceDlg(); return; }
+  for(const npc of NPCS) {
+    if(Math.abs(player.x+player.w/2 - (npc.x+npc.w/2)) < 28 &&
+       Math.abs(player.y - npc.y) < 24) {
+      openDialogue(npc.name, npc.lines);
+      return;
+    }
+  }
+}
+
+// ── Location label ────────────────────────────────────────────────────
+const ZONES = [
+  { maxX: 200, name:'Twoleg Place' },
+  { maxX: 400, name:'Forest Edge' },
+  { maxX: 600, name:'ThunderClan Territory' },
+  { maxX: 9999,name:'ThunderClan Camp' },
+];
+function updateLocation() {
+  const zone = ZONES.find(z => player.x < z.maxX) || ZONES[ZONES.length-1];
+  document.getElementById('bar-loc').textContent = zone.name;
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────
+let running = false;
+
+function frame() {
+  if(!running) return;
+  requestAnimationFrame(frame);
+
+  updatePlayer(1);
+  updateCamera();
+  checkTriggers();
+  checkNPCInteraction();
+  updateParticles(1);
+  updateLocation();
+
+  // ── render ──────────────────────────────────────────────────────────
+  ctx.save();
+  ctx.scale(SCALE, SCALE);
+
+  drawBG();
+  drawWorld();
+  drawParticles();
+
+  // draw NPCs
+  for(const npc of NPCS) drawNPC(npc);
+
+  drawPlayer();
+  drawHUD();
+
+  ctx.restore();
+
+  // clear just-pressed
+  for(const k in justKeys) justKeys[k]=false;
+}
+
+window.startGame = function() {
+  document.getElementById('title-screen').style.display='none';
+  // open intro dialogue
+  openDialogue('', [
+    'Tonight the forest feels closer than ever.',
+    'You are Rusty — a young tabby cat living in the Twoleg place.',
+    'Something stirs in the trees beyond the fence…',
+    '→ Use arrow keys (or WASD / JKL) to move.  SPACE / ↑ to jump.  E to talk.',
+  ]);
+  running=true;
+  requestAnimationFrame(frame);
+};
+</script>
+</body>
+</html>
