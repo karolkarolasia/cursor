@@ -1,0 +1,33 @@
+name: Run tool on demand
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: "Tool name (e.g. hello_world, http_probe)"
+        required: true
+        type: string
+      params:
+        description: "JSON params (e.g. {\"url\":\"https://example.com\"})"
+        required: false
+        default: "{}"
+        type: string
+
+jobs:
+  run:
+    name: "Run ${{ inputs.tool }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Execute tool
+        run: python run.py "${{ inputs.tool }}" '${{ inputs.params }}'
